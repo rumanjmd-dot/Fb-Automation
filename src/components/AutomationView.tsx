@@ -19,6 +19,10 @@ import {
   AlertCircle,
   FileVideo,
   Layers,
+  Search,
+  Key,
+  ExternalLink,
+  MapPin,
 } from 'lucide-react';
 import {
   FacebookPage,
@@ -26,6 +30,7 @@ import {
   GeoCountry,
   UploadLogItem,
   PostTab,
+  UserProfile,
 } from '../types';
 import { publishVideoToPage } from '../services/facebookService';
 
@@ -42,6 +47,9 @@ interface AutomationViewProps {
   onAddLog: (text: string, type?: 'info' | 'success' | 'warning' | 'error') => void;
   onIncrementSuccess: (count?: number) => void;
   onIncrementFailed: (count?: number) => void;
+  userProfile?: UserProfile | null;
+  onOpenLoginModal?: () => void;
+  onUpdatePages?: (pages: FacebookPage[]) => void;
 }
 
 export const AutomationView: React.FC<AutomationViewProps> = ({
@@ -57,11 +65,22 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
   onAddLog,
   onIncrementSuccess,
   onIncrementFailed,
+  userProfile,
+  onOpenLoginModal,
+  onUpdatePages,
 }) => {
   // Accordion states
   const [isPageAccordionOpen, setIsPageAccordionOpen] = useState(false);
   const [isGeoAccordionOpen, setIsGeoAccordionOpen] = useState(false);
   const [pageSearch, setPageSearch] = useState('');
+
+  // Geo Targeting Customization: Search and Mode Filters
+  const [geoFilterMode, setGeoFilterMode] = useState<'all' | 'states_only'>('all');
+  const [geoSearchQuery, setGeoSearchQuery] = useState('');
+
+  // Quick Page Access Token for direct Real Facebook Upload
+  const [showQuickTokenInput, setShowQuickTokenInput] = useState(false);
+  const [quickPageToken, setQuickPageToken] = useState('');
 
   // Mode and inputs
   const [postTab, setPostTab] = useState<PostTab>('Video');
@@ -88,11 +107,34 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
   const selectedPages = pages.filter((p) => p.isSelected);
   const selectedPagesCount = selectedPages.length;
 
-  // Selected countries/regions calculation
-  const selectedCountries = geoCountries.filter((c) => {
-    const hasAnyState = c.states.some((s) => s.isSelected);
-    return c.isSelected || hasAnyState;
-  });
+  // Selected state lists vs pure country selections
+  const selectedStatesList = geoCountries.flatMap((c) =>
+    c.states
+      .filter((s) => s.isSelected)
+      .map((s) => ({ ...s, countryCode: c.code, countryName: c.name }))
+  );
+  const selectedCountriesOnly = geoCountries.filter((c) => c.isSelected && !c.states.some((s) => s.isSelected));
+  const totalRegionsCount = selectedStatesList.length;
+
+  // Display label matching Screenshots 1 & 2 ("1 REGIONS SELECTED", "2 REGIONS SELECTED")
+  const geoAccordionLabel =
+    totalRegionsCount > 0 && selectedCountriesOnly.length === 0
+      ? `${totalRegionsCount} REGIONS SELECTED`
+      : selectedCountriesOnly.length > 0 && totalRegionsCount === 0
+      ? `${selectedCountriesOnly.length} COUNTRIES SELECTED`
+      : totalRegionsCount > 0 && selectedCountriesOnly.length > 0
+      ? `${totalRegionsCount} REGIONS, ${selectedCountriesOnly.length} COUNTRIES`
+      : '0 REGIONS SELECTED';
+
+  // Check if active target page has a real Facebook token
+  const hasRealToken = Boolean(
+    (selectedPages[0]?.accessToken &&
+      selectedPages[0].accessToken.length > 25 &&
+      !selectedPages[0].accessToken.includes('VALID_DEMO_SYSTEM_TOKEN')) ||
+    (userProfile?.userToken &&
+      userProfile.userToken.length > 25 &&
+      !userProfile.userToken.includes('VALID_DEMO_SYSTEM_TOKEN'))
+  );
 
   // Keep universal caption synced with all media items whenever postText changes
   useEffect(() => {
@@ -105,7 +147,7 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
     }
   }, [postText]);
 
-  // Handle media file upload
+  // Handle media file upload (saving the real File object for live Facebook upload)
   const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files) as File[];
@@ -126,11 +168,12 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
         caption: postText || file.name.replace(/\.[^/.]+$/, ''),
         status: 'pending',
         progress: 0,
+        file: file, // CRITICAL: Real File object for online Facebook upload!
       };
     });
 
     onUpdateMediaList([...mediaList, ...newItems]);
-    onAddLog(`📎 Loaded ${newItems.length} media file(s). Single caption auto-synced across all files.`, 'info');
+    onAddLog(`📎 Loaded ${newItems.length} real media file(s). Ready for live Facebook video upload.`, 'info');
   };
 
   // Helper to quickly load 3-5 sample videos for testing the exact workflow
@@ -199,6 +242,28 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
     onAddLog('🗑 Media cleared. Geo-targeting and settings kept intact for next page.', 'info');
   };
 
+  // Quick Page Token Save handler for 100% Real Facebook Video Upload
+  const handleSaveQuickToken = () => {
+    if (!quickPageToken.trim()) {
+      alert('Please enter a valid Facebook Page Access Token');
+      return;
+    }
+    const token = quickPageToken.trim();
+    localStorage.setItem('fb_user_token', token);
+
+    // Apply token to selected pages
+    if (onUpdatePages && pages.length > 0) {
+      const updated = pages.map((p, idx) => (idx === 0 || p.isSelected ? { ...p, accessToken: token } : p));
+      onUpdatePages(updated);
+    } else if (selectedPages.length > 0) {
+      selectedPages[0].accessToken = token;
+    }
+
+    setShowQuickTokenInput(false);
+    setQuickPageToken('');
+    onAddLog('🔑 Facebook Page Access Token saved! Real video uploads will now publish live to Facebook.', 'success');
+  };
+
   // Geo Targeting Handlers
   const handleToggleCountry = (code: string) => {
     const updated = geoCountries.map((country) => {
@@ -207,8 +272,8 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
         return {
           ...country,
           isSelected: nextSelected,
-          // When parent country toggled, select or unselect all child states
-          states: country.states.map((s) => ({ ...s, isSelected: nextSelected })),
+          // When parent country is explicitly selected/deselected, reset individual states
+          states: country.states.map((s) => ({ ...s, isSelected: false })),
         };
       }
       return country;
@@ -223,17 +288,17 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
     onUpdateGeoCountries(updated);
   };
 
-  // State selection WITHOUT needing country selected (User explicitly requested this!)
+  // State selection: Keep parent country UNCHECKED so user targets ONLY the specific state!
   const handleToggleState = (countryCode: string, stateKey: string) => {
     const updated = geoCountries.map((country) => {
       if (country.code === countryCode) {
         const updatedStates = country.states.map((s) =>
           s.key === stateKey ? { ...s, isSelected: !s.isSelected } : s
         );
-        const allSelected = updatedStates.every((s) => s.isSelected);
         return {
           ...country,
-          isSelected: allSelected,
+          // CRITICAL: Uncheck parent country so targeting is ONLY for the selected states/divisions!
+          isSelected: false,
           states: updatedStates,
         };
       }
@@ -276,14 +341,16 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
     }
 
     if (geoTargeting) {
-      const activeCountries = geoCountries.filter((c) => c.isSelected || c.states.some((s) => s.isSelected));
-      const summary = activeCountries
-        .map((c) => {
-          const selectedStateNames = c.states.filter((s) => s.isSelected).map((s) => s.name.split(' ')[0]);
-          return selectedStateNames.length > 0 ? `${c.code} (${selectedStateNames.join(', ')})` : c.code;
-        })
-        .join(' | ');
-      onAddLog(`🌍 Geo-targeting active: ${summary || 'Global'}`, 'info');
+      const activeStates = geoCountries.flatMap((c) =>
+        c.states.filter((s) => s.isSelected).map((s) => `${s.name} (${s.key})`)
+      );
+      const activeCountries = geoCountries.filter((c) => c.isSelected && !c.states.some((s) => s.isSelected)).map((c) => c.code);
+
+      const parts: string[] = [];
+      if (activeStates.length > 0) parts.push(`States/Divisions: ${activeStates.join(', ')}`);
+      if (activeCountries.length > 0) parts.push(`Countries: ${activeCountries.join(', ')}`);
+
+      onAddLog(`🌍 Geo-targeting active: ${parts.join(' | ') || 'Global'}`, 'info');
     }
 
     const totalOperations = selectedPages.length * mediaList.length;
@@ -310,6 +377,11 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
           const targetRegions = geoCountries
             .flatMap((c) => c.states.filter((s) => s.isSelected).map((s) => ({ key: s.key, name: s.name })));
 
+          // Only target whole countries if explicitly selected AND not overridden by state-only targeting
+          const targetCountries = geoCountries
+            .filter((c) => c.isSelected && !c.states.some((s) => s.isSelected))
+            .map((c) => c.code);
+
           const res = await publishVideoToPage(
             {
               page,
@@ -318,7 +390,7 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
               fastUpload,
               geoTargeting: geoTargeting
                 ? {
-                    countries: geoCountries.filter((c) => c.isSelected || c.states.some((s) => s.isSelected)).map((c) => c.code),
+                    countries: targetCountries,
                     regions: targetRegions,
                   }
                 : undefined,
@@ -341,9 +413,13 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
           const listWithSuccess = [...mediaList];
           listWithSuccess[mIdx].status = 'completed';
           listWithSuccess[mIdx].fbPostId = res.postId;
+          listWithSuccess[mIdx].fbPostUrl = res.postUrl;
           onUpdateMediaList(listWithSuccess);
 
           onAddLog(`  ✓ [Video ${mIdx + 1}] Successfully published to "${page.name}"! Post ID: ${res.postId}`, 'success');
+          if (res.postUrl) {
+            onAddLog(`  🔗 Post URL: ${res.postUrl}`, 'info');
+          }
           onIncrementSuccess(1);
         } catch (err: any) {
           onAddLog(`  ✕ Upload failed for "${media.name}": ${err.message}`, 'error');
@@ -389,8 +465,67 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
           <h2 className="text-lg font-black text-white tracking-wide uppercase">
             UPLOAD
           </h2>
-          <p className="text-xs text-slate-400">Create and publish</p>
+          <p className="text-xs text-slate-400">Create and publish to Facebook Pages</p>
         </div>
+      </div>
+
+      {/* Real Facebook API Upload Mode Status Banner */}
+      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#121f2f] to-[#152a3f] border border-[#223d5d] shadow-md space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-2.5 h-2.5 rounded-full ${
+                hasRealToken
+                  ? 'bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse'
+                  : 'bg-amber-400'
+              }`}
+            />
+            <span className="text-xs font-bold text-white tracking-wide uppercase">
+              {hasRealToken ? 'Real Facebook API Live Mode' : 'Facebook Video Upload Ready'}
+            </span>
+          </div>
+          <button
+            id="toggle-quick-token-btn"
+            onClick={() =>
+              onOpenLoginModal
+                ? onOpenLoginModal()
+                : setShowQuickTokenInput(!showQuickTokenInput)
+            }
+            className="text-xs font-bold text-sky-400 hover:text-sky-300 underline flex items-center gap-1"
+          >
+            <Key className="w-3.5 h-3.5" />
+            {hasRealToken ? 'Page Token Active' : 'Enter Page Token'}
+          </button>
+        </div>
+
+        <p className="text-[11.5px] text-slate-300 leading-relaxed">
+          {hasRealToken
+            ? `✓ Connected to Facebook Page. Videos will post directly to Facebook via Graph API with Division/State geo-targeting.`
+            : 'ফেসবুক পেজে রিয়েল ভিডিও আপলোড করতে আপনার Page Access Token দিন (বা টেস্ট করতে সরাসরি ভিডিও আপলোড দিন)।'}
+        </p>
+
+        {showQuickTokenInput && (
+          <div className="pt-2 border-t border-[#203650] space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={quickPageToken}
+                onChange={(e) => setQuickPageToken(e.target.value)}
+                placeholder="Paste Facebook Page Access Token (EAAB...)"
+                className="flex-1 px-3 py-2 text-xs rounded-xl bg-[#0a111a] border border-[#233a52] text-white focus:outline-none focus:border-sky-500 font-mono"
+              />
+              <button
+                onClick={handleSaveQuickToken}
+                className="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold shrink-0 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+            <p className="text-[10.5px] text-slate-400">
+              টোকেন সেভ করলে ভিডিও সরাসরি আপনার পেজে পোস্ট হবে এবং পোস্ট লিংক পাবেন।
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 2. Page Selector Accordion Button */}
@@ -617,11 +752,23 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
                   </div>
 
                   {/* Status Badge */}
-                  <div className="shrink-0">
+                  <div className="shrink-0 flex items-center gap-1.5">
                     {item.status === 'completed' ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1">
-                        <Check className="w-3 h-3" /> Done
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {item.fbPostUrl && (
+                          <a
+                            href={item.fbPostUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10.5px] font-semibold text-sky-400 hover:text-sky-300 hover:underline flex items-center gap-0.5"
+                          >
+                            View <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Done
+                        </span>
+                      </div>
                     ) : item.status === 'uploading' ? (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-950 text-sky-300 border border-sky-800 animate-pulse">
                         {item.progress}%
@@ -723,7 +870,7 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
         </div>
       </div>
 
-      {/* 9. Geo Countries & Regions Accordion matching Screenshots 2 & 3 */}
+      {/* 9. Geo Countries & Regions Accordion matching Screenshots 1 & 2 */}
       {geoTargeting && (
         <div className="rounded-2xl overflow-hidden border border-[#202f43] bg-[#141e2b] shadow-md">
           <button
@@ -733,8 +880,8 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
           >
             <div className="flex items-center gap-2.5">
               <Globe className="w-4 h-4 text-sky-400" />
-              <span>
-                {selectedCountries.length} COUNTRIES SELECTED
+              <span className="tracking-wide uppercase font-bold text-xs sm:text-sm">
+                {geoAccordionLabel}
               </span>
             </div>
             {isGeoAccordionOpen ? (
@@ -744,7 +891,7 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
             )}
           </button>
 
-          {/* Expanded Countries & Regions Section matching Screenshots 2 & 3 */}
+          {/* Expanded Countries & Regions Section */}
           {isGeoAccordionOpen && (
             <div className="p-4 border-t border-[#202f43] bg-[#121b27] space-y-3">
               <div className="flex items-center justify-between">
@@ -755,110 +902,252 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
                   <button
                     id="geo-clear-btn"
                     onClick={handleClearGeo}
-                    className="text-xs font-semibold text-slate-400 hover:text-white uppercase tracking-wider"
+                    className="text-xs font-semibold text-slate-400 hover:text-white uppercase tracking-wider transition-colors"
                   >
                     CLEAR
                   </button>
                   <button
                     id="geo-done-btn"
                     onClick={() => setIsGeoAccordionOpen(false)}
-                    className="text-xs font-bold text-sky-400 hover:text-sky-300 uppercase tracking-wider"
+                    className="text-xs font-bold text-sky-400 hover:text-sky-300 uppercase tracking-wider transition-colors"
                   >
                     DONE
                   </button>
                 </div>
               </div>
 
-              {/* Country List with Expandable State/Division Checkboxes */}
-              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                {geoCountries.map((country) => {
-                  const hasSelectedStates = country.states.some((s) => s.isSelected);
-                  const isChecked = country.isSelected || hasSelectedStates;
+              {/* Mode Tabs: All Locations vs State/Division Only (Explicit user request) */}
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#0d141f] border border-[#1f2d3e]">
+                <button
+                  type="button"
+                  onClick={() => setGeoFilterMode('all')}
+                  className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all ${
+                    geoFilterMode === 'all'
+                      ? 'bg-sky-500 text-slate-950 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  All Countries & States
+                </button>
+                <button
+                  type="button"
+                  id="state-only-mode-btn"
+                  onClick={() => setGeoFilterMode('states_only')}
+                  className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all ${
+                    geoFilterMode === 'states_only'
+                      ? 'bg-sky-500 text-slate-950 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  🎯 Only States / Divisions (শুধু স্টেট/বিভাগ)
+                </button>
+              </div>
 
-                  return (
-                    <div
-                      key={country.code}
-                      className="rounded-2xl border border-[#213144] bg-[#151f2c] overflow-hidden"
+              {/* Geo Search Bar */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={geoSearchQuery}
+                  onChange={(e) => setGeoSearchQuery(e.target.value)}
+                  placeholder="Search division, state or ID (e.g. Barisal, 4371, Dhaka, 1723)..."
+                  className="w-full pl-8 pr-7 py-2 rounded-xl bg-[#0d1521] border border-[#203144] text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                />
+                {geoSearchQuery && (
+                  <button
+                    onClick={() => setGeoSearchQuery('')}
+                    className="absolute right-2.5 top-2 text-slate-400 hover:text-white text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Selected States Quick Chips Bar */}
+              {selectedStatesList.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-[#0e1622] border border-[#1f2e42]">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-sky-400" /> Target States ({selectedStatesList.length}):
+                  </span>
+                  {selectedStatesList.map((state) => (
+                    <span
+                      key={`${state.countryCode}_${state.key}`}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-sky-950/90 text-sky-200 border border-sky-800"
                     >
-                      {/* Country Item Row matching Screenshot 2 */}
-                      <div className="flex items-center justify-between p-3">
-                        <div
-                          onClick={() => handleToggleCountry(country.code)}
-                          className="flex items-center gap-3 flex-1 cursor-pointer"
-                        >
+                      <span>{state.name}</span>
+                      <span className="font-mono text-[10.5px] text-sky-400">({state.key})</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleState(state.countryCode, state.key);
+                        }}
+                        className="text-sky-400 hover:text-white hover:bg-sky-800 rounded p-0.5 ml-0.5 transition-colors"
+                        title="Deselect state"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                  <button
+                    onClick={handleClearGeo}
+                    className="text-[11px] text-slate-400 hover:text-rose-400 underline ml-auto font-medium"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+
+              {/* Render: State-Only Mode or Search Mode */}
+              {geoFilterMode === 'states_only' || geoSearchQuery.trim() !== '' ? (
+                <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+                  {geoCountries
+                    .flatMap((c) =>
+                      c.states
+                        .filter((s) => {
+                          if (!geoSearchQuery.trim()) return true;
+                          const q = geoSearchQuery.toLowerCase();
+                          return (
+                            s.name.toLowerCase().includes(q) ||
+                            s.key.includes(q) ||
+                            c.name.toLowerCase().includes(q) ||
+                            c.code.toLowerCase().includes(q)
+                          );
+                        })
+                        .map((s) => ({ ...s, countryCode: c.code, countryName: c.name }))
+                    )
+                    .map((state) => (
+                      <div
+                        key={`${state.countryCode}_${state.key}`}
+                        onClick={() => handleToggleState(state.countryCode, state.key)}
+                        className={`flex items-center justify-between p-2.5 rounded-xl text-xs transition-colors cursor-pointer border ${
+                          state.isSelected
+                            ? 'bg-[#182638] border-sky-500/50 text-white'
+                            : 'bg-[#131d2a] border-[#1d2a3c] text-slate-300 hover:text-white hover:bg-[#192638]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
                           <div
-                            className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border transition-colors ${
-                              isChecked
+                            className={`w-4.5 h-4.5 rounded-md flex items-center justify-center shrink-0 border transition-colors ${
+                              state.isSelected
                                 ? 'bg-sky-500 border-sky-500 text-slate-950'
-                                : 'border-slate-500 bg-[#0e1622]'
+                                : 'border-slate-600 bg-[#0e1622]'
                             }`}
                           >
-                            {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                            {state.isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                           </div>
-                          <span className="text-xs sm:text-sm font-semibold text-white">
-                            {country.name}
+                          <span className="font-medium text-slate-100">{state.name}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1e2d40] text-slate-400 font-mono">
+                            {state.countryCode}
                           </span>
                         </div>
-
-                        {/* Country Code & Expand Chevron */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-mono text-slate-400">
-                            {country.code}
-                          </span>
-                          <button
-                            onClick={() => handleToggleExpandCountry(country.code)}
-                            className="p-1 rounded text-slate-400 hover:text-white transition-colors"
-                            aria-label={`Expand ${country.name} states`}
-                          >
-                            {country.isExpanded ? (
-                              <ChevronUp className="w-4 h-4" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
+                        <span className="text-[11px] font-mono text-slate-400 font-semibold">
+                          {state.key}
+                        </span>
                       </div>
+                    ))}
+                </div>
+              ) : (
+                /* Render: All Locations Hierarchical matching Screenshots 1 & 2 */
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                  {geoCountries.map((country) => {
+                    const hasSelectedStates = country.states.some((s) => s.isSelected);
+                    const isCountryChecked = country.isSelected;
 
-                      {/* Expandable States / Divisions matching user requirement */}
-                      {country.isExpanded && country.states.length > 0 && (
-                        <div className="px-4 py-2.5 bg-[#0f1722] border-t border-[#202e40] space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px] text-slate-400 pb-1">
-                            <span>Select individual divisions / states:</span>
-                            <span className="text-sky-400 font-mono">
-                              {country.states.filter((s) => s.isSelected).length}/{country.states.length}
+                    return (
+                      <div
+                        key={country.code}
+                        className="rounded-2xl border border-[#213144] bg-[#151f2c] overflow-hidden"
+                      >
+                        {/* Country Item Row matching Screenshot 1 & 2 */}
+                        <div className="flex items-center justify-between p-3">
+                          <div
+                            onClick={() => handleToggleCountry(country.code)}
+                            className="flex items-center gap-3 flex-1 cursor-pointer"
+                          >
+                            <div
+                              className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border transition-colors ${
+                                isCountryChecked
+                                  ? 'bg-sky-500 border-sky-500 text-slate-950'
+                                  : hasSelectedStates
+                                  ? 'border-sky-400 bg-[#0e1622]'
+                                  : 'border-slate-500 bg-[#0e1622]'
+                              }`}
+                            >
+                              {isCountryChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                              {!isCountryChecked && hasSelectedStates && (
+                                <div className="w-2 h-2 rounded-full bg-sky-400" />
+                              )}
+                            </div>
+                            <span className="text-xs sm:text-sm font-semibold text-white">
+                              {country.name}
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                            {country.states.map((state) => (
-                              <div
-                                key={state.key}
-                                onClick={() => handleToggleState(country.code, state.key)}
-                                className={`flex items-center gap-2 p-2 rounded-xl text-xs transition-colors cursor-pointer border ${
-                                  state.isSelected
-                                    ? 'bg-[#1b293a] border-sky-500/40 text-white'
-                                    : 'bg-[#141d28] border-transparent text-slate-400 hover:text-slate-200'
-                                }`}
-                              >
-                                <div
-                                  className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border transition-colors ${
-                                    state.isSelected
-                                      ? 'bg-sky-500 border-sky-500 text-slate-950'
-                                      : 'border-slate-600 bg-[#0e1622]'
-                                  }`}
-                                >
-                                  {state.isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                                </div>
-                                <span className="truncate">{state.name}</span>
-                              </div>
-                            ))}
+                          {/* Country Code & Expand Chevron */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-mono text-slate-400">
+                              {country.code}
+                            </span>
+                            <button
+                              onClick={() => handleToggleExpandCountry(country.code)}
+                              className="p-1 rounded text-slate-400 hover:text-white transition-colors"
+                              aria-label={`Expand ${country.name} states`}
+                            >
+                              {country.isExpanded ? (
+                                <ChevronUp className="w-4 h-4" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" />
+                              )}
+                            </button>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+
+                        {/* Expandable States / Divisions matching Screenshots 1 & 2 */}
+                        {country.isExpanded && country.states.length > 0 && (
+                          <div className="px-3 py-2 bg-[#0e1622] border-t border-[#202e40] space-y-1">
+                            <div className="flex items-center justify-between text-[11px] text-slate-400 pb-1 px-1">
+                              <span>Select individual divisions / states:</span>
+                              <span className="text-sky-400 font-mono">
+                                {country.states.filter((s) => s.isSelected).length}/{country.states.length}
+                              </span>
+                            </div>
+
+                            <div className="space-y-1">
+                              {country.states.map((state) => (
+                                <div
+                                  key={state.key}
+                                  onClick={() => handleToggleState(country.code, state.key)}
+                                  className={`flex items-center justify-between p-2 rounded-xl text-xs transition-colors cursor-pointer border ${
+                                    state.isSelected
+                                      ? 'bg-[#182638] border-sky-500/40 text-white'
+                                      : 'bg-[#121a26] border-transparent text-slate-300 hover:text-white hover:bg-[#162130]'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <div
+                                      className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border transition-colors ${
+                                        state.isSelected
+                                          ? 'bg-sky-500 border-sky-500 text-slate-950'
+                                          : 'border-slate-600 bg-[#0e1622]'
+                                      }`}
+                                    >
+                                      {state.isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                                    </div>
+                                    <span className="truncate font-medium">{state.name}</span>
+                                  </div>
+                                  <span className="text-[11px] font-mono text-slate-400 shrink-0 font-medium">
+                                    {state.key}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>

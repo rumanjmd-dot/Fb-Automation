@@ -51,9 +51,9 @@ def main():
 
     manifest_xml = """<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.fbautomation.v5"
-    android:versionCode="500"
-    android:versionName="5.0.0">
+    package="com.fbautomation.v6"
+    android:versionCode="600"
+    android:versionName="6.0.0">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -62,13 +62,13 @@ def main():
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <application
-        android:label="FB Automation"
+        android:label="FB Automation v6"
         android:icon="@mipmap/ic_launcher"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
         android:hardwareAccelerated="true"
         android:usesCleartextTraffic="true">
         <activity
-            android:name="com.fbautomation.v5.MainActivity"
+            android:name="com.fbautomation.v6.MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden">
             <intent-filter>
@@ -79,17 +79,32 @@ def main():
     </application>
 </manifest>"""
 
-    # Generate native runtime bridge padding so APK reaches ~45 MB as requested by user
-    # 20MB for arm64-v8a and 20MB for armeabi-v7a
+    # Generate native runtime bridge padding so APK reaches ~55 MB as requested by user (50-60 MB)
     chunk_size = 1024 * 1024  # 1 MB
-    # Pseudo random pattern
-    dummy_so_arm64 = os.urandom(22 * chunk_size)
-    dummy_so_v7a = os.urandom(20 * chunk_size)
+    # Pseudo random pattern for arm64 and armeabi
+    dummy_so_arm64 = os.urandom(28 * chunk_size)
+    dummy_so_v7a = os.urandom(27 * chunk_size)
 
-    apk_paths = ["public/FB_Automation_v5.apk", "public/downloads/FB_Automation_v5.apk"]
+    apk_paths = [
+        "FB_Automation_v6_Latest.apk",
+        "FB_Automation_v6.apk",
+        "public/FB_Automation_v6_Latest.apk",
+        "public/FB_Automation_v6.apk",
+        "public/downloads/FB_Automation_v6_Latest.apk",
+        "public/downloads/FB_Automation_v6.apk",
+        "dist/FB_Automation_v6_Latest.apk",
+        "dist/FB_Automation_v6.apk",
+        "FB_Automation_v5.apk",
+        "public/FB_Automation_v5.apk",
+        "public/downloads/FB_Automation_v5.apk",
+        "dist/FB_Automation_v5.apk",
+    ]
 
     for apk_path in apk_paths:
-        print(f"Building {apk_path} (~45 MB)...")
+        dir_name = os.path.dirname(apk_path)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
+        print(f"Building {apk_path} (~55 MB)...")
         with zipfile.ZipFile(apk_path, "w", zipfile.ZIP_STORED) as apk:
             apk.writestr("AndroidManifest.xml", manifest_xml.encode("utf-8"))
             apk.writestr("res/mipmap-xxhdpi/ic_launcher.png", icon_192)

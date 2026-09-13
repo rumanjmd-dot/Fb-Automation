@@ -35,6 +35,8 @@ export interface MediaItem {
   status: 'pending' | 'uploading' | 'completed' | 'failed';
   progress: number;
   fbPostId?: string;
+  fbPostUrl?: string;
+  file?: File;
   error?: string;
 }
 

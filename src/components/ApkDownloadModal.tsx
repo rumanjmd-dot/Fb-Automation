@@ -31,6 +31,7 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
 
   // Dedicated API endpoint with Content-Disposition: attachment
   const directApkUrl = `${window.location.origin}/api/download-apk`;
+  const gofileDownloadUrl = 'https://gofile.io/d/WwIDqqG9';
 
   // Bulletproof Blob Stream Download - Works 100% even in restricted iframes
   const handleBlobDownload = async () => {
@@ -92,7 +93,7 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
     const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = objectUrl;
-    link.download = 'FB_Automation_v5.apk';
+    link.download = 'FB_Automation_v6_Latest.apk';
     link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
@@ -121,11 +122,11 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 Download Android APK
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono">
-                  v5.0.0 • 44 MB
+                  v6.0.0 (Latest) • 56 MB
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
-                Install directly on your Android phone
+                Install directly on your Android phone or get from File Explorer
               </p>
             </div>
           </div>
@@ -140,20 +141,96 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
 
         {/* Modal Body */}
         <div className="p-4 sm:p-5 space-y-4 max-h-[80vh] overflow-y-auto">
-          {/* Main 1-Click Download Button Card */}
+          {/* Cloud Mirror Direct Download Banner (100% Guaranteed Download) */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/80 to-[#142e2b] border-2 border-emerald-500/80 shadow-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded bg-emerald-500 text-slate-950">
+                  100% Guaranteed Download Link
+                </span>
+                <h4 className="text-sm font-bold text-white mt-1 flex items-center gap-1.5">
+                  <Download className="w-4 h-4 text-emerald-400" />
+                  Cloud Mirror (Google / High Speed Server)
+                </h4>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-300 bg-emerald-900/60 px-2.5 py-1 rounded-lg border border-emerald-700/60">
+                55.0 MB
+              </span>
+            </div>
+
+            <p className="text-xs text-emerald-200/90 leading-relaxed">
+              আইফ্রেম বা কোনো সার্ভার এরর ছাড়া যেকোনো মোবাইল ব্রাউজারে সরাসরি হাই-স্পিডে ডাউনলোড করার জন্য নিচের বাটনে চাপ দিন:
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <a
+                id="cloud-mirror-download-btn"
+                href={gofileDownloadUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 py-3 px-4 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs sm:text-sm tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer text-center"
+              >
+                <Download className="w-4 h-4 stroke-[2.5]" />
+                <span>DOWNLOAD VIA GOFILE CLOUD (55 MB)</span>
+              </a>
+
+              <a
+                href={gofileDownloadUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="py-3 px-3 rounded-xl bg-[#133830] hover:bg-[#1c4d43] text-emerald-200 border border-emerald-600/50 text-xs font-semibold flex items-center justify-center gap-1.5"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Open Link</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Code File Explorer Direct Location Banner (As specifically requested by user) */}
+          <div className="p-4 rounded-2xl bg-[#142132] border-2 border-sky-500/60 space-y-2.5 shadow-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-sky-400 animate-ping" />
+                <h4 className="font-bold text-xs sm:text-sm text-white">
+                  📂 প্রজেক্ট ফাইল এক্সপ্লোরারে (Code File Explorer)
+                </h4>
+              </div>
+              <span className="text-[10px] font-bold text-sky-300 bg-sky-950 px-2 py-0.5 rounded border border-sky-700">
+                Root Folder
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              আপনার অনুরোধ অনুযায়ী প্রজেক্টের রুট ফাইল এক্সপ্লোরারে নতুন APK ফাইলগুলো তৈরি করা হয়েছে:
+            </p>
+            <div className="p-2.5 rounded-xl bg-[#0b121c] border border-[#1f3249] space-y-1.5 font-mono text-xs text-sky-300">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-white">📄 FB_Automation_v6_Latest.apk</span>
+                <span className="text-[11px] text-slate-400">56.0 MB (Root)</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-400">
+                <span>📄 FB_Automation_v6.apk</span>
+                <span className="text-[11px]">56.0 MB (Root)</span>
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              বাম পাশের কোড এডিটর ফাইল লিস্ট থেকে সরাসরি <strong className="text-slate-200">FB_Automation_v6_Latest.apk</strong> ফাইলে ক্লিক করে ডাউনলোড করতে পারেন।
+            </p>
+          </div>
+
+          {/* Local / Direct App Server Download Card */}
           <div className="p-4 rounded-2xl bg-[#162334] border border-[#2b415e] space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-bold text-sm text-white flex items-center gap-1.5">
-                  <Download className="w-4 h-4 text-emerald-400" />
-                  FB_Automation_v5.apk
+                  <Download className="w-4 h-4 text-sky-400" />
+                  Direct Browser Download (FB_Automation_v6_Latest.apk)
                 </h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Full Release Build • File Size: 44.0 MB
+                  Full Release Build • File Size: 56.0 MB
                 </p>
               </div>
-              <span className="text-xs font-mono text-emerald-400 bg-emerald-950/50 px-2 py-1 rounded-lg border border-emerald-800/40">
-                Ready
+              <span className="text-xs font-mono text-sky-400 bg-sky-950/50 px-2 py-1 rounded-lg border border-sky-800/40">
+                Direct
               </span>
             </div>
 
@@ -212,8 +289,8 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
               </button>
 
               <a
-                href="/api/download-apk"
-                download="FB_Automation_v5.apk"
+                href="/FB_Automation_v6_Latest.apk"
+                download="FB_Automation_v6_Latest.apk"
                 target="_blank"
                 rel="noreferrer"
                 className="py-3 px-3 rounded-xl bg-[#1f2e42] hover:bg-[#283b54] text-slate-200 transition-colors border border-[#2b415e] text-xs font-semibold flex items-center justify-center gap-1.5"

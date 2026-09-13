@@ -178,6 +178,9 @@ export default function App() {
             onAddLog={addLog}
             onIncrementSuccess={(c = 1) => setSuccessfulOps((prev) => prev + c)}
             onIncrementFailed={(c = 1) => setFailedOps((prev) => prev + c)}
+            userProfile={userProfile}
+            onOpenLoginModal={() => setIsFbLoginOpen(true)}
+            onUpdatePages={setPages}
           />
         )}
 

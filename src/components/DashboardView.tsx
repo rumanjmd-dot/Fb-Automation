@@ -86,11 +86,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Android APK Available
               </h4>
               <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-900 text-emerald-300 font-mono">
-                v5.0.0
+                v5.0.0 • 55 MB
               </span>
             </div>
             <p className="text-[11px] text-slate-400 truncate">
-              Download FB_Automation_v5.apk or Install directly on your phone
+              Download FB_Automation_v5.apk (55 MB) or Install directly on your phone
             </p>
           </div>
         </div>
