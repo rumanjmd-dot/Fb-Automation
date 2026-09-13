@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="120" fill="#0d141f"/>
+  <rect x="24" y="24" width="464" height="464" rx="100" fill="#131d2a" stroke="#2563eb" stroke-width="8"/>
+  <circle cx="256" cy="256" r="140" fill="#1e3a8a" opacity="0.6"/>
+  <!-- Sparkles / Automation Symbol -->
+  <path d="M256 120 L275 220 L375 239 L275 258 L256 358 L237 258 L137 239 L237 220 Z" fill="#38bdf8"/>
+  <circle cx="360" cy="150" r="18" fill="#60a5fa"/>
+  <circle cx="150" cy="340" r="14" fill="#60a5fa"/>
+  <!-- Text FB -->
+  <text x="256" y="420" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="900" font-size="46" fill="#ffffff" letter-spacing="4">FB AUTOMATION</text>
+  <text x="256" y="452" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="20" fill="#94a3b8" letter-spacing="2">PAGE MANAGER V5</text>
+</svg>

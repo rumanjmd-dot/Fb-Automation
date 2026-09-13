@@ -1,0 +1,6 @@
+{
+  "name": "FB Automation",
+  "description": "FB Automation Page Content Manager V5 with multi-video bulk upload, geo targeting, and Facebook page management",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
