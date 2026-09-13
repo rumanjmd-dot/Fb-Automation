@@ -33,6 +33,53 @@ jobs:
         with:
           gradle-version: '8.4'
 
+      - name: Prepare missing Android resources and configuration
+        run: |
+          echo "Preparing Android resources and manifest..."
+          mkdir -p android/app/src/main/res/values
+
+          # Ensure strings.xml exists
+          cat << 'EOF' > android/app/src/main/res/values/strings.xml
+          <resources>
+              <string name="app_name">FB Automation</string>
+          </resources>
+          EOF
+
+          # Ensure styles.xml exists with proper AppCompat theme
+          cat << 'EOF' > android/app/src/main/res/values/styles.xml
+          <resources>
+              <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+                  <item name="android:windowNoTitle">true</item>
+                  <item name="windowActionBar">false</item>
+              </style>
+          </resources>
+          EOF
+
+          # Ensure gradle.properties exists
+          cat << 'EOF' > android/gradle.properties
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          android.enableJetifier=true
+          EOF
+
+          # Fix AndroidManifest.xml: replace missing mipmap icon with default Android icon
+          sed -i 's/@mipmap\/ic_launcher/@android:drawable\/sym_def_app_icon/g' android/app/src/main/AndroidManifest.xml || true
+          sed -i 's/android:roundIcon="[^"]*"//g' android/app/src/main/AndroidManifest.xml || true
+          sed -i 's/@android:style\/Theme.NoTitleBar/@style\/AppTheme/g' android/app/src/main/AndroidManifest.xml || true
+
+          # Create a dummy debug keystore if not present
+          if [ ! -f "android/debug.keystore" ]; then
+            keytool -genkey -v \
+              -keystore android/debug.keystore \
+              -alias androiddebugkey \
+              -storepass android \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
       - name: Build Android Debug APK
         working-directory: ./android
         run: |
@@ -42,14 +89,20 @@ jobs:
       - name: Locate and verify built APK
         id: locate_apk
         run: |
+          mkdir -p release_out
           APK_PATH=$(find android/app/build/outputs/apk/debug -name "*.apk" -type f | head -n 1)
+          if [ -z "${APK_PATH}" ] || [ ! -s "${APK_PATH}" ]; then
+            echo "Searching all built apks..."
+            APK_PATH=$(find . -name "*.apk" -type f | head -n 1)
+          fi
+
           if [ -z "${APK_PATH}" ] || [ ! -s "${APK_PATH}" ]; then
             echo "Error: Debug APK was not generated."
             exit 1
           fi
+
           echo "Found APK at: ${APK_PATH}"
           ls -lh "${APK_PATH}"
-          mkdir -p release_out
           cp "${APK_PATH}" release_out/app-debug.apk
           echo "apk_path=release_out/app-debug.apk" >> "$GITHUB_OUTPUT"
 
