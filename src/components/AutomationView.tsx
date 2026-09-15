@@ -33,6 +33,7 @@ import {
   UserProfile,
 } from '../types';
 import { publishVideoToPage } from '../services/facebookService';
+import { USER_CUSTOM_STATE_KEYS } from '../data/geoData';
 
 interface AutomationViewProps {
   pages: FacebookPage[];
@@ -317,6 +318,39 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
     onAddLog('Cleared all Geo-targeting locations', 'info');
   };
 
+  // User requested: "sudhu Dhaka slctert kora jay jnai Bangladesh না"
+  const handleSelectOnlyDhaka = () => {
+    const updated = geoCountries.map((country) => {
+      return {
+        ...country,
+        isSelected: false, // Parent country is NOT selected
+        states: country.states.map((s) => ({
+          ...s,
+          isSelected: country.code === 'BD' && s.key === '4373', // Only Dhaka (4373)
+        })),
+      };
+    });
+    onUpdateGeoCountries(updated);
+    onAddLog('🎯 Selected Dhaka Division only (Bangladesh country unticked)', 'success');
+  };
+
+  // User requested custom state list: West Bengal, Goa, Andhra Pradesh, Mizoram, Tripura, Assam, Manipur, etc. (No countries ticked)
+  const handleApplyUserCustomStates = () => {
+    const customSet = new Set(USER_CUSTOM_STATE_KEYS);
+    const updated = geoCountries.map((country) => {
+      return {
+        ...country,
+        isSelected: false, // Parent country Bangladesh/India is NEVER checked!
+        states: country.states.map((s) => ({
+          ...s,
+          isSelected: customSet.has(s.key),
+        })),
+      };
+    });
+    onUpdateGeoCountries(updated);
+    onAddLog(`🎯 Auto-selected user customized states (${USER_CUSTOM_STATE_KEYS.length} states) without parent countries.`, 'success');
+  };
+
   // START Upload Workflow
   const handleStartUpload = async () => {
     if (selectedPages.length === 0) {
@@ -355,6 +389,7 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
 
     const totalOperations = selectedPages.length * mediaList.length;
     let completedOperations = 0;
+    let currentMediaState = [...mediaList];
 
     for (let pIdx = 0; pIdx < selectedPages.length; pIdx++) {
       const page = selectedPages[pIdx];
@@ -365,13 +400,14 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
       for (let mIdx = 0; mIdx < mediaList.length; mIdx++) {
         if (stopRequestedRef.current) break;
 
-        const media = mediaList[mIdx];
+        const media = currentMediaState[mIdx];
         onAddLog(`  [Video ${mIdx + 1}/${mediaList.length}] Uploading "${media.name}" as ${postTab}...`, 'info');
 
-        // Update media status
-        const listWithUploading = [...mediaList];
-        listWithUploading[mIdx].status = 'uploading';
-        onUpdateMediaList(listWithUploading);
+        // Update media status to uploading
+        currentMediaState = currentMediaState.map((m, idx) =>
+          idx === mIdx ? { ...m, status: 'uploading', progress: 5 } : m
+        );
+        onUpdateMediaList(currentMediaState);
 
         try {
           const targetRegions = geoCountries
@@ -400,9 +436,10 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
             (pct) => {
               const currentMediaOverall = ((completedOperations + pct / 100) / totalOperations) * 100;
               setOverallProgress(Math.min(99, Math.round(currentMediaOverall)));
-              const updated = [...mediaList];
-              updated[mIdx].progress = pct;
-              onUpdateMediaList(updated);
+              currentMediaState = currentMediaState.map((m, idx) =>
+                idx === mIdx ? { ...m, progress: pct } : m
+              );
+              onUpdateMediaList(currentMediaState);
             }
           );
 
@@ -410,11 +447,19 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
           const progressNow = Math.round((completedOperations / totalOperations) * 100);
           setOverallProgress(progressNow);
 
-          const listWithSuccess = [...mediaList];
-          listWithSuccess[mIdx].status = 'completed';
-          listWithSuccess[mIdx].fbPostId = res.postId;
-          listWithSuccess[mIdx].fbPostUrl = res.postUrl;
-          onUpdateMediaList(listWithSuccess);
+          // Update current media state to completed
+          currentMediaState = currentMediaState.map((m, idx) =>
+            idx === mIdx
+              ? {
+                  ...m,
+                  status: 'completed' as const,
+                  progress: 100,
+                  fbPostId: res.postId,
+                  fbPostUrl: res.postUrl,
+                }
+              : m
+          );
+          onUpdateMediaList(currentMediaState);
 
           onAddLog(`  ✓ [Video ${mIdx + 1}] Successfully published to "${page.name}"! Post ID: ${res.postId}`, 'success');
           if (res.postUrl) {
@@ -422,6 +467,10 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
           }
           onIncrementSuccess(1);
         } catch (err: any) {
+          currentMediaState = currentMediaState.map((m, idx) =>
+            idx === mIdx ? { ...m, status: 'failed' as const, error: err.message } : m
+          );
+          onUpdateMediaList(currentMediaState);
           onAddLog(`  ✕ Upload failed for "${media.name}": ${err.message}`, 'error');
           onIncrementFailed(1);
         }
@@ -940,6 +989,29 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
                   }`}
                 >
                   🎯 Only States / Divisions (শুধু স্টেট/বিভাগ)
+                </button>
+              </div>
+
+              {/* Instant One-Click Preset Buttons (User requested: Only Dhaka, Only BD + India Target States, No country ticked) */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  id="select-only-dhaka-btn"
+                  onClick={handleSelectOnlyDhaka}
+                  className="py-2 px-2.5 rounded-xl bg-[#162536] hover:bg-[#1f3248] text-sky-300 border border-sky-500/40 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Only Dhaka (No BD Country)</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="select-custom-states-btn"
+                  onClick={handleApplyUserCustomStates}
+                  className="py-2 px-2.5 rounded-xl bg-emerald-950/50 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-500/50 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                >
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>BD Divisions + India States (No Country)</span>
                 </button>
               </div>
 

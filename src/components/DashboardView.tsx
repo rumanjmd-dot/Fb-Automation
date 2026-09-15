@@ -137,7 +137,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <PlaySquare className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xl font-bold text-white font-mono">{mediaList.length || 59}</div>
+            <div className="text-xl font-bold text-white font-mono">{mediaList.length}</div>
             <div className="text-xs text-slate-400">Loaded Content</div>
           </div>
         </div>
@@ -151,9 +151,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xl font-bold text-white font-mono">
-              {selectedMediaCount > 0 ? selectedMediaCount : 1}
-            </div>
+            <div className="text-xl font-bold text-white font-mono">{selectedMediaCount}</div>
             <div className="text-xs text-slate-400">Selected Content</div>
           </div>
         </div>

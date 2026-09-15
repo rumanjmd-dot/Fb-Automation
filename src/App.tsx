@@ -24,42 +24,44 @@ export default function App() {
   const [isFbLoginOpen, setIsFbLoginOpen] = useState(false);
   const [isApkModalOpen, setIsApkModalOpen] = useState(false);
 
-  // User Profile
+  // User Profile loaded from localStorage so user never has to re-login on app exit
   const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
-    return {
-      id: '100088992144551',
-      name: 'Ruman Ahmed (রুমেন)',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-      connectedAt: '23:36:38',
-      isValidated: true,
-      userToken: 'EAAGNO4...VALID_DEMO_SYSTEM_TOKEN',
-    };
+    try {
+      const saved = localStorage.getItem('fb_user_profile');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return null;
   });
 
-  // Facebook Pages (loaded from mock or real FB Graph API)
-  const [pages, setPages] = useState<FacebookPage[]>(DEFAULT_PAGES);
+  // Facebook Pages loaded from localStorage
+  const [pages, setPages] = useState<FacebookPage[]>(() => {
+    try {
+      const saved = localStorage.getItem('fb_pages');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
 
   // Media List (3-5 videos)
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
 
-  // Geo Targeting countries and states (preserves user state across media clears!)
-  const [geoCountries, setGeoCountries] = useState<GeoCountry[]>(INITIAL_GEO_COUNTRIES);
+  // Geo Targeting countries and states (preserves user state across app reboots!)
+  const [geoCountries, setGeoCountries] = useState<GeoCountry[]>(() => {
+    try {
+      const saved = localStorage.getItem('fb_geo_countries');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return INITIAL_GEO_COUNTRIES;
+  });
 
   // System Logs
-  const [logs, setLogs] = useState<UploadLogItem[]>([
-    {
-      id: 'log-1',
-      timestamp: '23:36:38',
-      text: '✓ User token validated: me',
-      type: 'success',
-    },
-    {
-      id: 'log-2',
-      timestamp: '23:36:40',
-      text: '✓ Fetched 23 Page(s) with Page Access',
-      type: 'success',
-    },
-  ]);
+  const [logs, setLogs] = useState<UploadLogItem[]>([]);
 
   // Operational metrics
   const [successfulOps, setSuccessfulOps] = useState(0);
@@ -97,10 +99,31 @@ export default function App() {
     addLog('Deselected all Facebook pages', 'info');
   };
 
-  // Check saved token on mount
+  // Sync User Profile to localStorage
+  useEffect(() => {
+    if (userProfile) {
+      localStorage.setItem('fb_user_profile', JSON.stringify(userProfile));
+    } else {
+      localStorage.removeItem('fb_user_profile');
+    }
+  }, [userProfile]);
+
+  // Sync Pages to localStorage
+  useEffect(() => {
+    if (pages.length > 0) {
+      localStorage.setItem('fb_pages', JSON.stringify(pages));
+    }
+  }, [pages]);
+
+  // Sync Geo Countries / States to localStorage so selected states stay saved permanently
+  useEffect(() => {
+    localStorage.setItem('fb_geo_countries', JSON.stringify(geoCountries));
+  }, [geoCountries]);
+
+  // Check saved token on mount and refresh session seamlessly
   useEffect(() => {
     const savedToken = localStorage.getItem('fb_user_token');
-    if (savedToken && !userProfile) {
+    if (savedToken) {
       fetchFacebookUserProfile(savedToken)
         .then((prof) => {
           setUserProfile(prof);
@@ -111,8 +134,8 @@ export default function App() {
             setPages(fetchedPages);
           }
         })
-        .catch(() => {
-          // Keep defaults
+        .catch((err) => {
+          console.warn('Session refresh notice:', err.message);
         });
     }
   }, []);

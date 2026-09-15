@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { X, Key, CheckCircle2, AlertCircle, RefreshCw, ExternalLink, ShieldCheck, Copy, Check, Facebook } from 'lucide-react';
 import { UserProfile, FacebookPage } from '../types';
 import { fetchFacebookUserProfile, fetchFacebookPages } from '../services/facebookService';
-import { DEFAULT_PAGES } from '../data/mockPages';
 
 interface FacebookLoginModalProps {
   isOpen: boolean;
@@ -68,23 +67,6 @@ export const FacebookLoginModal: React.FC<FacebookLoginModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleUseDemoAccount = () => {
-    const demoProfile: UserProfile = {
-      id: '100088992144551',
-      name: 'Ruman Ahmed (রুমেন)',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-      email: 'rumanjmd@gmail.com',
-      connectedAt: new Date().toLocaleTimeString(),
-      userToken: 'EAAGNO4...VALID_DEMO_SYSTEM_TOKEN',
-      isValidated: true,
-    };
-    onUpdateProfile(demoProfile);
-    onUpdatePages(DEFAULT_PAGES);
-    setSuccessMsg('ডেমো ফেসবুক একাউন্ট এবং স্ক্রিনশটের ২৩টি পেজ লোড হয়েছে!');
-    onAddLog('✓ User token validated: me (Ruman Ahmed)', 'success');
-    onAddLog(`✓ Fetched ${DEFAULT_PAGES.length} Page(s) with Page Access (গোধূলি বেলা, ছায়াবীথি, etc.)`, 'success');
   };
 
   const handleDisconnect = () => {
@@ -278,15 +260,6 @@ export const FacebookLoginModal: React.FC<FacebookLoginModalProps> = ({
                   Connect Facebook & Fetch Pages
                 </>
               )}
-            </button>
-
-            <button
-              id="demo-account-btn"
-              onClick={handleUseDemoAccount}
-              type="button"
-              className="w-full py-2 px-4 rounded-xl bg-[#192535] hover:bg-[#203046] text-slate-300 text-xs font-medium border border-[#2a3d54] transition-colors flex items-center justify-center gap-2"
-            >
-              <span>অথবা স্ক্রিনশটের ২৩টি পেজ দিয়ে দ্রুত টেস্ট করুন (Demo Setup)</span>
             </button>
           </div>
         </div>

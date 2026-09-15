@@ -1,44 +1,60 @@
 import { GeoCountry } from '../types';
 
+/**
+ * Facebook Meta Graph API Division / Region Keys
+ * Bangladesh divisions and Indian states with exact Meta Geo Targeting Region IDs
+ */
 export const INITIAL_GEO_COUNTRIES: GeoCountry[] = [
   {
     code: 'BD',
     name: 'Bangladesh',
-    isSelected: false,
+    isSelected: false, // PARENT COUNTRY UNTICKED (Meta state-only targeting)
     isExpanded: true,
     states: [
+      { key: '4373', name: 'Dhaka Division', code: '4373', isSelected: true },
+      { key: '4372', name: 'Chattogram Division', code: '4372', isSelected: true },
+      { key: '4375', name: 'Rajshahi Division', code: '4375', isSelected: true },
+      { key: '4374', name: 'Khulna Division', code: '4374', isSelected: true },
       { key: '4371', name: 'Barisal Division', code: '4371', isSelected: true },
-      { key: '4372', name: 'Chittagong Division', code: '4372', isSelected: false },
-      { key: '4373', name: 'Dhaka Division', code: '4373', isSelected: false },
-      { key: '4374', name: 'Khulna Division', code: '4374', isSelected: false },
-      { key: '4375', name: 'Rajshahi Division', code: '4375', isSelected: false },
-      { key: '4376', name: 'Rangpur Division', code: '4376', isSelected: false },
-      { key: '4377', name: 'Sylhet Division', code: '4377', isSelected: false },
-      { key: '4378', name: 'Mymensingh Division', code: '4378', isSelected: false },
+      { key: '4377', name: 'Sylhet Division', code: '4377', isSelected: true },
+      { key: '4376', name: 'Rangpur Division', code: '4376', isSelected: true },
+      { key: '4378', name: 'Mymensingh Division', code: '4378', isSelected: true },
     ],
   },
   {
     code: 'IN',
     name: 'India',
-    isSelected: false,
+    isSelected: false, // PARENT COUNTRY UNTICKED (Meta state-only targeting)
     isExpanded: true,
     states: [
-      { key: '1723', name: 'Andaman and Nicobar Islands', code: '1723', isSelected: true },
-      { key: '1724', name: 'Andhra Pradesh', code: '1724', isSelected: false },
-      { key: '1748', name: 'Arunachal Pradesh', code: '1748', isSelected: false },
-      { key: '1749', name: 'Assam', code: '1749', isSelected: false },
-      { key: '1750', name: 'Bihar', code: '1750', isSelected: false },
-      { key: '1755', name: 'Delhi', code: '1755', isSelected: false },
-      { key: '1757', name: 'Gujarat', code: '1757', isSelected: false },
-      { key: '1762', name: 'Karnataka', code: '1762', isSelected: false },
-      { key: '1763', name: 'Kerala', code: '1763', isSelected: false },
-      { key: '1766', name: 'Maharashtra', code: '1766', isSelected: false },
-      { key: '1773', name: 'Punjab', code: '1773', isSelected: false },
-      { key: '1774', name: 'Rajasthan', code: '1774', isSelected: false },
-      { key: '1776', name: 'Tamil Nadu', code: '1776', isSelected: false },
-      { key: '1777', name: 'Telangana', code: '1777', isSelected: false },
-      { key: '1779', name: 'Uttar Pradesh', code: '1779', isSelected: false },
-      { key: '1781', name: 'West Bengal', code: '1781', isSelected: false },
+      { key: '1781', name: 'West Bengal', code: 'WB', isSelected: true },
+      { key: '1756', name: 'Goa', code: 'GA', isSelected: true },
+      { key: '1724', name: 'Andhra Pradesh', code: 'AP', isSelected: true },
+      { key: '1769', name: 'Mizoram', code: 'MZ', isSelected: true },
+      { key: '1778', name: 'Tripura', code: 'TR', isSelected: true },
+      { key: '1749', name: 'Assam', code: 'AS', isSelected: true },
+      { key: '1767', name: 'Manipur', code: 'MN', isSelected: true },
+      { key: '1759', name: 'Himachal Pradesh', code: 'HP', isSelected: true },
+      { key: '1748', name: 'Arunachal Pradesh', code: 'AR', isSelected: true },
+      { key: '1761', name: 'Jharkhand', code: 'JH', isSelected: true },
+      { key: '1765', name: 'Madhya Pradesh', code: 'MP', isSelected: true },
+      { key: '1771', name: 'Odisha', code: 'OR', isSelected: true },
+      { key: '1770', name: 'Nagaland', code: 'NL', isSelected: true },
+      { key: '1768', name: 'Meghalaya', code: 'ML', isSelected: true },
+      { key: '1780', name: 'Uttarakhand', code: 'UT', isSelected: true },
+      { key: '1775', name: 'Sikkim', code: 'SK', isSelected: true },
+      { key: '1760', name: 'Jammu & Kashmir', code: 'JK', isSelected: true },
+      { key: '1750', name: 'Bihar', code: 'BR', isSelected: false },
+      { key: '1755', name: 'Delhi', code: 'DL', isSelected: false },
+      { key: '1757', name: 'Gujarat', code: 'GJ', isSelected: false },
+      { key: '1762', name: 'Karnataka', code: 'KA', isSelected: false },
+      { key: '1763', name: 'Kerala', code: 'KL', isSelected: false },
+      { key: '1766', name: 'Maharashtra', code: 'MH', isSelected: false },
+      { key: '1773', name: 'Punjab', code: 'PB', isSelected: false },
+      { key: '1774', name: 'Rajasthan', code: 'RJ', isSelected: false },
+      { key: '1776', name: 'Tamil Nadu', code: 'TN', isSelected: false },
+      { key: '1777', name: 'Telangana', code: 'TG', isSelected: false },
+      { key: '1779', name: 'Uttar Pradesh', code: 'UP', isSelected: false },
     ],
   },
   {
@@ -151,3 +167,36 @@ export const INITIAL_GEO_COUNTRIES: GeoCountry[] = [
     ],
   },
 ];
+
+/**
+ * The user's exact customized list of target states & divisions
+ * (Dhaka + Bangladesh Divisions & specific Indian states)
+ */
+export const USER_CUSTOM_STATE_KEYS = [
+  '4373', // Dhaka Division
+  '4372', // Chattogram Division
+  '4375', // Rajshahi Division
+  '4374', // Khulna Division
+  '4371', // Barisal Division
+  '4377', // Sylhet Division
+  '4376', // Rangpur Division
+  '4378', // Mymensingh Division
+  '1781', // West Bengal, India
+  '1756', // Goa, India
+  '1724', // Andhra Pradesh, India
+  '1769', // Mizoram, India
+  '1778', // Tripura, India
+  '1749', // Assam, India
+  '1767', // Manipur, India
+  '1759', // Himachal Pradesh, India
+  '1748', // Arunachal Pradesh, India
+  '1761', // Jharkhand, India
+  '1765', // Madhya Pradesh, India
+  '1771', // Odisha, India
+  '1770', // Nagaland, India
+  '1768', // Meghalaya, India
+  '1780', // Uttarakhand, India
+  '1775', // Sikkim, India
+  '1760', // Jammu & Kashmir, India
+];
+
