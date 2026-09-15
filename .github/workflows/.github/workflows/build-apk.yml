@@ -117,7 +117,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE_TAG="v5.0-build-${{ github.run_number }}"
+          RELEASE_TAG="v6.0-build-${{ github.run_number }}"
           gh release create "${RELEASE_TAG}" \
             release_out/app-debug.apk \
             --title "FB Automation APK Build #${{ github.run_number }}" \
